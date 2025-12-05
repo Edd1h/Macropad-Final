@@ -32,7 +32,7 @@ namespace Macropad_Final
         //variables
         public string Shortcut;
         public string[] SelectedShortcuts = new string[12];
-        public string[] Shortcuts = { "+{A}", "+{B}", "+{C}", "+{D}", "+{E}", "+{F}", "+{G}", "+{H}" }; // + is shift
+        public string[] Shortcuts = {"^(c)", "^(v)", "^(a)", "^(z)", "^(y)", "^(x)", "^(s)", "^(p)", "^(f)", "^(b)", "^(i)", "^(u)", "^(.)", "^(,)", "%{TAB}", "%{F4}"}; // + is shift
         bool HotKeyPressed = false;
         public int NumberPressed;
 
@@ -65,12 +65,12 @@ namespace Macropad_Final
         {
             while (true)
             {
-                for (int i = 0; i < 12; i++)
+                for (int i = 0; i < SelectedShortcuts.Length; i++)
                 {
                     if (GetAsyncKeyState(Hotkeys[i]) < 0) //detect hotkey press
                     {
                         HotKeyPressed = !HotKeyPressed;
-                        Thread.Sleep(50);
+                        Thread.Sleep(100);
                         NumberPressed = i;
                     }
                 }
