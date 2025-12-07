@@ -5,6 +5,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using WinForms = System.Windows.Forms;
+using NAudio.CoreAudioApi;
+using System.Management;
 
 namespace Macropad_Final
 {
@@ -36,9 +38,19 @@ namespace Macropad_Final
         bool HotKeyPressed = false;
         public int NumberPressed;
 
+        // volume watcher
+        private MMDeviceEnumerator mmDeviceEnumerator;
+        private MMDevice audioDevice;
+
+        // brightness watcher
+        private ManagementEventWatcher brightnessWatcher;
+        public int CurrentBrightness;
+
         public MainWindow()
         {
             InitializeComponent();
+            StartVolumeWatcher();
+            StartBrightnessWatcher();
 
             // Put all comboboxes in an array 
             ComboBox[] comboBoxes = {
@@ -102,5 +114,62 @@ namespace Macropad_Final
             int index = (int)comboBox.Tag;
             SelectedShortcuts[index] = Shortcuts[comboBox.SelectedIndex];
         }
+
+        // Detects the volume of the device everytime it changes
+        private void StartVolumeWatcher()
+        {
+            mmDeviceEnumerator = new MMDeviceEnumerator();
+            audioDevice = mmDeviceEnumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia);
+
+            VolumeTb.Text = $"{(int)Math.Round(audioDevice.AudioEndpointVolume.MasterVolumeLevelScalar * 100)}%";
+
+            audioDevice.AudioEndpointVolume.OnVolumeNotification += AudioEndpointVolume_OnVolumeNotification;
+        }
+
+        // Sets text in VolumeTb to the volume of the device
+        private void AudioEndpointVolume_OnVolumeNotification(AudioVolumeNotificationData data)
+        {
+            Dispatcher.Invoke(() => VolumeTb.Text = $"{(int)Math.Round(data.MasterVolume * 100)}%");
+        }
+
+        // Detects the brightness of the device everytime it changes and changes BrightnessTb.text to that value
+        private void StartBrightnessWatcher()
+        {
+            try
+            {
+                // get current brightness once
+                using (var searcher = new ManagementObjectSearcher("root\\wmi", "SELECT CurrentBrightness FROM WmiMonitorBrightness"))
+                {
+                    foreach (ManagementObject i in searcher.Get())
+                    {
+                        var brightness = i["CurrentBrightness"];
+                        if (brightness != null)
+                        {
+                            var currentBrightness = Math.Min(100, Math.Max(1, Convert.ToInt32(brightness)));
+                            Dispatcher.Invoke(() => BrightnessTb.Text = $"{currentBrightness}%");
+                        }
+                        break;
+                    }
+                }
+
+                // detects the brightness everytime it changes
+                brightnessWatcher = new ManagementEventWatcher("root\\wmi", "SELECT * FROM WmiMonitorBrightnessEvent");
+                brightnessWatcher.EventArrived += (s, e) =>
+                {
+                    var brightnessL = e.NewEvent["Brightness"];
+                    if (brightnessL != null)
+                    {
+                        var currentBrightness = Math.Min(100, Math.Max(1, Convert.ToInt32(brightnessL)));
+                        Dispatcher.Invoke(() => BrightnessTb.Text = $"{currentBrightness}%");
+                    }
+                };
+                brightnessWatcher.Start();
+            }
+            catch
+            {
+                
+            }
+        }
+
     }
 }
